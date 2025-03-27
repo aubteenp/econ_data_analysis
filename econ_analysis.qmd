@@ -1,0 +1,335 @@
+---
+title: "Raleigh's Missing Middle & Homelessness"
+format: pdf
+editor: visual
+---
+
+## Intro
+
+Our case study focuses on Raleigh\'s recent Missing Middle policy reform (enacted in 2021) -- an initiative that relaxed zoning restrictions to permit duplexes, townhomes, and small-scale apartment developments -- in an effort to boost affordable housing. We use this policy change as a lens to address the broader question of whether relaxing housing restrictions can improve housing affordability. Our underlying hypothesis is that easing these restrictions will enhance affordability by increasing the housing supply and, consequently, reducing homelessness and other negative shelter system outcomes.
+
+The dataset leveraged in this analysis originates from a mandate established by the 2009 McKinney-Vento Homeless Assistance Act, which requires local jurisdictions to report detailed information on their shelter systems to the U.S. Department of Housing and Urban Development (HUD). Our study utilizes this dataset spanning 2015--2023, which includes key performance indicators such as median shelter stay, return rates, and the number of first-time homeless individuals.
+
+To rigorously evaluate our hypothesis, we employ two complementary methods. First, we created a series of visualizations comparing key response variables across five outcomes -- Median Stay (Days), Percent Returns in 6 months, Percent Returns in 12 months, Number of 1st Time Homeless, and Percent with Successful Exit -- between Raleigh and Durham. Second, we conducted a difference-in-differences analysis using 2021 as the cutoff year, comparing not only Raleigh and Durham but also contrasting Raleigh with an aggregate measure derived from averaging each response variable across all North Carolina municipalities. Despite these methodological approaches, our empirical evidence did not support the hypothesis that the relaxation of zoning restrictions improved affordability. In fact, the DiD estimates indicated no significant improvements in homelessness-related outcomes for Raleigh relative to Durham or the broader NC benchmark, suggesting that Raleigh's Missing Middle policy reform did not yield benefits in reducing homelessness.
+
+```{r}
+#| echo: false
+#| results: "hide"
+
+
+# Load necessary libraries
+library(dplyr)
+library(readr)
+library(stringr)
+
+# List all CSV files that match your naming pattern
+# This pattern assumes files end with "_NCData.csv"
+csv_files <- list.files(pattern = "_NCData\\.csv$")
+
+# Read each CSV file while forcing the problematic column to be numeric.
+combined_data <- csv_files %>% 
+  lapply(function(file) {
+    # Extract the 4-digit year from the filename
+    year_val <- str_extract(file, "^[0-9]{4}")
+    
+    # Read the CSV file while explicitly setting the column type for the problematic column.
+    # Adjust the column name below if it differs slightly in your files.
+    df <- read_csv(file,
+                   col_types = cols(
+                     `Percent with Successful  ES, TH, SH, PH-RRH Exit` = col_double()
+                   ),
+                   show_col_types = FALSE)
+    
+    # Add a new column for year extracted from the filename
+    df <- df %>% mutate(year = as.integer(year_val))
+    return(df)
+  }) %>% bind_rows()
+
+# View the combined data
+#print(combined_data)
+
+
+```
+
+```{r}
+#| echo: false
+#| results: "hide"
+
+combined_data <- combined_data %>%
+  # Rename the column
+  rename(`city/region` = `Continuum of Care (CoC)`,
+    `Median Stay (Days)` = `ES-SH-TH Median (Days)`,
+    `Number of 1st Time Homeless` = `ES-SH-TH-PH 1st Time Homeless`,
+    `Percent with Successful Exit` = `Percent with Successful  ES, TH, SH, PH-RRH Exit`
+) %>%
+  
+  # Remove " CoC" from the end of each city/region entry
+  mutate(`city/region` = str_remove(`city/region`, " CoC$"))
+
+
+```
+
+```{r}
+#| echo: false
+#| results: "hide"
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Filter for Raleigh/Wake County
+raleigh_data <- combined_data %>%
+  filter(`city/region` == "Raleigh/Wake County")
+
+# -------------------------------------------
+# 1. Plot for Percentage Measures (combined)
+# -------------------------------------------
+# Define the percentage variables
+percent_vars <- c("Percent with Successful Exit", 
+                  "Percent Returns in 6 mths", 
+                  "Percent Returns in 12 mths")
+
+# Pivot these columns from wide to long format
+raleigh_percent <- raleigh_data %>%
+  select(year, all_of(percent_vars)) %>%
+  pivot_longer(cols = all_of(percent_vars),
+               names_to = "variable",
+               values_to = "value")
+
+# Create the percentage plot
+p_percent <- ggplot(raleigh_percent, aes(x = year, y = value, color = variable, group = variable)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "Percentage Measures Over Time in Raleigh/Wake County",
+    x = "Year",
+    y = "Percentage"
+  ) +
+  theme_minimal()
+
+# -------------------------------------------
+# 2. Plot for Median Stay (Days)
+# -------------------------------------------
+p_median <- ggplot(raleigh_data, aes(x = year, y = `Median Stay (Days)`)) +
+  geom_line(color = "blue") +
+  geom_point(color = "blue") +
+  labs(
+    title = "Median Stay (Days) Over Time in Raleigh/Wake County",
+    x = "Year",
+    y = "Median Stay (Days)"
+  ) +
+  theme_minimal() +
+  scale_y_continuous(limits = c(0, NA))
+
+# -------------------------------------------
+# 3. Plot for Number of 1st Time Homeless
+# -------------------------------------------
+p_first_time <- ggplot(raleigh_data, aes(x = year, y = `Number of 1st Time Homeless`)) +
+  geom_line(color = "darkgreen") +
+  geom_point(color = "darkgreen") +
+  labs(
+    title = "Number of 1st Time Homeless Over Time in Raleigh/Wake County",
+    x = "Year",
+    y = "Number of 1st Time Homeless"
+  ) +
+  theme_minimal() +
+  scale_y_continuous(limits = c(0, NA))
+
+# Print the plots (each will appear in its own plot window)
+#print(p_percent)
+#print(p_median)
+#print(p_first_time)
+
+```
+
+### Durham vs Raleigh
+
+```{r}
+#| echo: false
+#| results: "hide"
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(stringr)
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(stringr)
+
+# Filter for Raleigh/Wake County and Durham County
+counties_data <- combined_data %>%
+  filter(`city/region` %in% c("Raleigh/Wake County", "Durham City & County"))
+
+# -------------------------------------------
+# 1. Combined Plot for Percentage Measures
+# -------------------------------------------
+# Define the percentage variable names (using updated header names)
+percent_vars <- c("Percent with Successful Exit", 
+                  "Percent Returns in 6 mths", 
+                  "Percent Returns in 12 mths")
+
+# Pivot these percentage columns into long format and include the county identifier
+counties_percent <- counties_data %>%
+  select(year, `city/region`, all_of(percent_vars)) %>%
+  pivot_longer(cols = all_of(percent_vars),
+               names_to = "variable",
+               values_to = "value")
+
+# Create a faceted plot so that each percentage variable appears in its own panel.
+# We use label_wrap_gen to wrap long facet titles.
+p_percent <- ggplot(counties_percent, aes(x = year, y = value, color = `city/region`, 
+                                           group = interaction(`city/region`, variable))) +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~ variable, scales = "free_y", nrow = 1,
+                labeller = as_labeller(c(
+               "Percent with Successful Exit" = "% Succ. Exit",
+               "Percent Returns in 6 mths" = "% Returns (6 mos)",
+               "Percent Returns in 12 mths" = "% Returns (12 mos)"
+             ))) +
+  labs(
+    title = "Percentage Measures Over Time",
+    x = "Year",
+    y = "Percentage"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 6),
+    plot.title = element_text(size = 14),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+
+  )
+
+# -------------------------------------------
+# 2. Plot for Median Stay (Days)
+# -------------------------------------------
+p_median <- ggplot(counties_data, aes(x = year, y = `Median Stay (Days)`, color = `city/region`, group = `city/region`)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "Median Stay (Days) Over Time",
+    x = "Year",
+    y = "Median Stay (Days)"
+  ) +
+  theme_minimal() +
+  scale_y_continuous(limits = c(0, NA))
+
+# -------------------------------------------
+# 3. Plot for Number of 1st Time Homeless
+# -------------------------------------------
+p_first_time <- ggplot(counties_data, aes(x = year, y = `Number of 1st Time Homeless`, color = `city/region`, group = `city/region`)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "Number of 1st Time Homeless Over Time",
+    x = "Year",
+    y = "Number of 1st Time Homeless"
+  ) +
+  theme_minimal() +
+  scale_y_continuous(limits = c(0, NA))
+
+# Print the plots
+print(p_percent)
+print(p_median)
+print(p_first_time)
+
+```
+
+Diff-in-Diff for Raleigh vs Average of other NC municipalities
+
+```{r}
+#| echo: false
+
+# Load necessary packages
+library(dplyr)
+library(broom)
+library(purrr)
+
+# Define the policy implementation year (adjust as needed)
+policy_year <- 2021
+
+# In your data, all observations are from NC.
+# Create the treatment and post indicators.
+nc_data <- combined_data %>%
+  mutate(
+    treatment = if_else(`city/region` == "Raleigh/Wake County", 1, 0),
+    post = if_else(year >= policy_year, 1, 0)
+  )
+
+# Define a vector of outcome variable names for which you want to run DiD.
+outcome_vars <- c(
+  "Median Stay (Days)",
+  "Percent Returns in 6 mths",
+  "Percent Returns in 12 mths",
+  "Number of 1st Time Homeless",
+  "Percent with Successful Exit"
+)
+
+# Loop over each outcome variable, run a DiD regression, and store the tidy results.
+results_list <- lapply(outcome_vars, function(var) {
+  # Construct the model formula. We use backticks in case the column name contains spaces.
+  formula <- as.formula(paste0("`", var, "` ~ treatment * post"))
+  # Run the regression
+  model <- lm(formula, data = nc_data)
+  # Tidy the model output and add a column indicating the outcome variable
+  tidy(model) %>% mutate(outcome = var)
+})
+
+# Combine all the results into one data frame.
+diff_in_diff_results <- bind_rows(results_list)
+
+# Print the combined results
+print(diff_in_diff_results)
+
+
+```
+
+Diff-in-Diff for Durham vs Raleigh
+
+```{r}
+#| echo: false
+
+# Load necessary packages
+library(dplyr)
+library(broom)
+library(purrr)
+
+# Define the policy implementation year (adjust as needed)
+policy_year <- 2021
+
+# Filter data to only include Durham and Raleigh observations
+rd_data <- combined_data %>%
+  filter(`city/region` %in% c("Raleigh/Wake County", "Durham City & County")) %>%
+  mutate(
+    treatment = if_else(`city/region` == "Raleigh/Wake County", 1, 0),
+    post = if_else(year >= policy_year, 1, 0)
+  )
+
+# Define a vector of outcome variable names for which you want to run DiD.
+outcome_vars <- c(
+  "Median Stay (Days)",
+  "Percent Returns in 6 mths",
+  "Percent Returns in 12 mths",
+  "Number of 1st Time Homeless",
+  "Percent with Successful Exit"
+)
+
+# Loop over each outcome variable, run a DiD regression, and store the tidy results.
+results_list <- lapply(outcome_vars, function(var) {
+  # Construct the model formula using backticks for variable names with spaces.
+  formula <- as.formula(paste0("`", var, "` ~ treatment * post"))
+  # Run the regression model
+  model <- lm(formula, data = rd_data)
+  # Tidy the model output and add a column indicating the outcome variable
+  tidy(model) %>% mutate(outcome = var)
+})
+
+# Combine all the results into one data frame.
+diff_in_diff_results <- bind_rows(results_list)
+
+# Print the combined results
+print(diff_in_diff_results)
+
+```
