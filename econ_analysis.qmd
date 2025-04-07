@@ -6,7 +6,7 @@ editor: visual
 
 ## Intro
 
-Our case study focuses on Raleigh\'s recent Missing Middle policy reform (enacted in 2021) -- an initiative that relaxed zoning restrictions to permit duplexes, townhomes, and small-scale apartment developments -- in an effort to boost affordable housing. We use this policy change as a lens to address the broader question of whether relaxing housing restrictions can improve housing affordability. Our underlying hypothesis is that easing these restrictions will enhance affordability by increasing the housing supply and, consequently, reducing homelessness and other negative shelter system outcomes.
+Our case study focuses on Raleigh's recent Missing Middle policy reform (enacted in 2021) -- an initiative that relaxed zoning restrictions to permit duplexes, townhomes, and small-scale apartment developments -- in an effort to boost affordable housing. We use this policy change as a lens to address the broader question of whether relaxing housing restrictions can improve housing affordability. Our underlying hypothesis is that easing these restrictions will enhance affordability by increasing the housing supply and, consequently, reducing homelessness and other negative shelter system outcomes.
 
 The dataset leveraged in this analysis originates from a mandate established by the 2009 McKinney-Vento Homeless Assistance Act, which requires local jurisdictions to report detailed information on their shelter systems to the U.S. Department of Housing and Urban Development (HUD). Our study utilizes this dataset spanning 2015--2023, which includes key performance indicators such as median shelter stay, return rates, and the number of first-time homeless individuals.
 
